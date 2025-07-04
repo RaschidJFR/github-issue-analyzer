@@ -5,9 +5,40 @@ from .traction_analyzer import TractionAnalyzer
 from .impact_analyzer import ImpactAnalyzer
 import logging
 from typing import Self
+from pydispatch import dispatcher
+from enum import Enum, auto
+
 _logger = logging.getLogger(__name__)
 
 class IssueAnalyzer:
+  
+  class Signals(Enum):
+    """Enum representing events related to issue analysis.
+    Each event corresponds to a specific action or state in the issue analysis process.
+    
+    - ISSUE_ANALYZER_PROGRESS: Event triggered to signal progress in the issue analysis task.
+    """
+    PROGRESS_UPDATE = auto()
+    TASK_COMPLETED = auto()
+    ERROR = auto()
+
+  class Steps(Enum):
+    """Enum representing the steps in the issue analysis process.
+    Each step corresponds to a specific stage in the analysis workflow.
+    - TASK_STARTED: The analysis task has started.
+    - TRACTION_ANALYSIS_STARTED: The traction analysis step has started.
+    - ISSUE_SUMMARIZATION_STARTED: The issue summarization step has started.
+    - IMPACT_ANALYSIS_STARTED: The impact analysis step has started.
+    - RANKING_STARTED: The ranking of issues based on scores has started.
+    - TASK_COMPLETED: The analysis task has been completed successfully.
+    - ERROR: An error occurred during the analysis process.
+    """
+    FETCHING_ISSUES = auto()
+    TRACTION_ANALYSIS_STARTED = auto()
+    ISSUE_SUMMARIZATION_STARTED = auto()
+    IMPACT_ANALYSIS_STARTED = auto()
+    SCORING_STARTED = auto()
+  
   def __init__(self, repo:str, token: str, model: ConversationalLLM):
     self._model = model
     self._token = token
@@ -16,6 +47,8 @@ class IssueAnalyzer:
     
   def fetch_issues(self) -> Self:
     _logger.info(f'Fetching issues for repository {self._repo}...')
+    self._emit_progress(IssueAnalyzer.Steps.FETCHING_ISSUES)
+    
     issues: list[dict] = []
     repo_owner = self._repo.split('/')[0]
     repo_name = self._repo.split('/')[1]
@@ -45,6 +78,14 @@ class IssueAnalyzer:
     merged_data = sorted(merged_data, key=lambda x: x['score'], reverse=True)
     return merged_data
 
+  def _emit_progress(self, step: Steps, data: dict = {}) -> None:
+    dispatcher.send(
+      signal=IssueAnalyzer.Signals.PROGRESS_UPDATE,
+      sender=self,
+      step=step,
+      data=data
+    )
+
   def analyze(self, issues: list[dict] = None, head: int = 20) -> list[dict]:
     """Analyze and prioritize issues based on traction, impact, and effort.
     Args:
@@ -53,48 +94,60 @@ class IssueAnalyzer:
     Returns:
       list[dict]: List of prioritized issues with calculated scores.
     """
-    
-    issues = issues or self.issues
-    if issues is None:
-      raise ValueError("You must first call `fetch_issues` or `load_issues` to load issue data.")
-    
-    # Take the top issues from traction analyzer
-    traction_data = TractionAnalyzer(self._repo, self._token).analyze(issues)
-    head = min(head, len(traction_data))
-    traction_data = traction_data[:head]
-    top_numbers = {issue['number'] for issue in traction_data}
-    _logger.info(f'Prioritizing top {head} issues based on traction...')
-    
-    top_issues = []
-    for issue in issues:
-      if issue['number'] in top_numbers:
-        top_issues.append(issue)
-    
-    summary_data = IssueSummarizer(self._repo, self._token, self._model).summarize(top_issues)
-    impact_data = ImpactAnalyzer(self._repo, self._token, self._model).analyze(top_issues)
-    
-    merged_data = {}
-    for issue in traction_data:
-      merged_data[issue['number']] = issue
-      merged_data[issue['number']]['traction'] = issue.pop('score', 0)
-    
-    for issue in summary_data:
-      if issue['number'] in merged_data:
-        merged_data[issue['number']].update(issue)
-        
-    for impact in impact_data:
-      if impact['number'] in merged_data:
-        merged_data[impact['number']].update(impact)
-        
-    for issue in issues:
-      if issue['number'] in merged_data:
-        merged_data[issue['number']].update({
-          'title': issue['title'],
-          'url': issue['url'],
-          'createdAt': issue['createdAt'],
-        })
+    result = []
+    try:
+      issues = issues or self.issues
+      if issues is None:
+        raise ValueError("You must first call `fetch_issues` or `load_issues` to load issue data.")
+      
+      # Take the top issues from traction analyzer
+      self._emit_progress(IssueAnalyzer.Steps.TRACTION_ANALYSIS_STARTED)
+      traction_data = TractionAnalyzer(self._repo, self._token).analyze(issues)
+      head = min(head, len(traction_data))
+      traction_data = traction_data[:head]
+      top_numbers = {issue['number'] for issue in traction_data}
+      _logger.info(f'Prioritizing top {head} issues based on traction...')
+      
+      top_issues = []
+      for issue in issues:
+        if issue['number'] in top_numbers:
+          top_issues.append(issue)
+      
+      self._emit_progress(IssueAnalyzer.Steps.ISSUE_SUMMARIZATION_STARTED)
+      summary_data = IssueSummarizer(self._repo, self._token, self._model).summarize(top_issues)
+      
+      self._emit_progress(IssueAnalyzer.Steps.IMPACT_ANALYSIS_STARTED)
+      impact_data = ImpactAnalyzer(self._repo, self._token, self._model).analyze(top_issues)
+      
+      merged_data = {}
+      for issue in traction_data:
+        merged_data[issue['number']] = issue
+        merged_data[issue['number']]['traction'] = issue.pop('score', 0)
+      
+      for issue in summary_data:
+        if issue['number'] in merged_data:
+          merged_data[issue['number']].update(issue)
+          
+      for impact in impact_data:
+        if impact['number'] in merged_data:
+          merged_data[impact['number']].update(impact)
+          
+      for issue in issues:
+        if issue['number'] in merged_data:
+          merged_data[issue['number']].update({
+            'title': issue['title'],
+            'url': issue['url'],
+            'createdAt': issue['createdAt'],
+          })
 
-    result = self._calculate_scores(list(merged_data.values()))
-    _logger.info(f'Prioritized {len(result)} issues.')
-    return result
+      self._emit_progress(IssueAnalyzer.Steps.SCORING_STARTED)
+      result = self._calculate_scores(list(merged_data.values()))
+      _logger.info(f'Prioritized {len(result)} issues.')
     
+      dispatcher.send(signal=IssueAnalyzer.Signals.TASK_COMPLETED, sender=self, data=result)
+      return result
+    
+    except Exception as e:
+      _logger.error(f'Error analyzing issues: {e}')
+      dispatcher.send(signal=IssueAnalyzer.Signals.ERROR, sender=self, data=str(e))
+          
