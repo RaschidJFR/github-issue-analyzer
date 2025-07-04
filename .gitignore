@@ -173,5 +173,5 @@ cython_debug/
 .pypirc
 
 # Artifacts and other
-.csv
+*.csv
 .DS_Store

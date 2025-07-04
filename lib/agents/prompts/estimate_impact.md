@@ -3,6 +3,7 @@ read the title, body, and all comments.
 Based on the problem being solved, the proposed approach, the conclusion, and next steps stated (if any), assign a number to the impact of solving this issue based on the following impact scale.
 
 **Impact Scale**
+
 4 – Required for building or running real-world apps. Without this, developers can’t build, launch, or scale production apps reliably.
 3 – Improves real-world applicability and there is no workaround or alternative.
 2 – Simplifies development and/or there are some workarounds or alternatives to overcome the issue.
