@@ -1,7 +1,7 @@
 from ..github_graphql import fetch_issues
+from ..models import helpers
 from dateutil import parser
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler as scaler
 import json
 import logging
 from typing import Self
@@ -169,18 +169,20 @@ class TractionAnalyzer:
     if issues is None:
       raise ValueError("You must first call `fetch_issues()` or `load_issues()` to load issue data.")
     
-    comments_df = pd.DataFrame(self._calc_avg_comments(issues))
-    interactions_df = pd.DataFrame(self._count_interactions(issues))
-    merged_df = comments_df.merge(interactions_df, on='number', how='outer')
+    comments_data = self._calc_avg_comments(issues)
+    interactions_data = self._count_interactions(issues)
+    merged_data = helpers.merge(comments_data, interactions_data, 'number')
 
     columns_to_normalize = ['avg_comments_per_week', 'commentCount', 'commenterCount', 'reactionCount']
-    normalized_df = merged_df[columns_to_normalize]
-    normalized_values = scaler().fit_transform(normalized_df)
-    normalized_df = pd.DataFrame(normalized_values, columns=columns_to_normalize)
+    normalized_data = helpers.normalize_values(merged_data, columns_to_normalize)
 
-    merged_df['score'] = normalized_df['commentCount'] * .3 + normalized_df['commenterCount'] * .6 + normalized_df['reactionCount'] * .15 + normalized_df['avg_comments_per_week'] * .2
-    merged_df['score'] = scaler().fit_transform(merged_df[['score']])
-    merged_df.sort_values(by='score', ascending=False, inplace=True)
-    
-    str_data = merged_df.to_json(orient='records', date_format='iso')
-    return json.loads(str_data)
+    for index, issue in enumerate(normalized_data):
+      merged_data[index]['score'] = (
+        issue['commentCount'] * .3 
+        + issue['commenterCount'] * .6 
+        + issue['reactionCount'] * .15 
+        + issue['avg_comments_per_week'] * .2
+      )
+    merged_data = helpers.normalize_values(merged_data, ['score'])
+    merged_data = sorted(merged_data, key=lambda x: x['score'], reverse=True)
+    return merged_data

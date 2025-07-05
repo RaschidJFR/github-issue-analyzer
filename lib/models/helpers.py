@@ -88,9 +88,9 @@ def normalize_values(data: list[dict], columns: list[str]) -> list[dict]:
     return result
   
 def merge(data1: list[dict], data2: list[dict], key: str) -> list[dict]:
-  merged_data = {item[key]: item for item in data1}
+  merged_data = {item[key]: item for item in data1}.copy()
   
-  for item in data2:
+  for item in data2.copy():
       if item[key] in merged_data:
           merged_data[item[key]].update(item)
       else:
