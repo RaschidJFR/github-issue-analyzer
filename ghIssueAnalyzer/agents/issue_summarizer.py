@@ -1,10 +1,9 @@
-from ..models import ConversationalLLM, helpers
-from ..github_graphql import fetch_issues
+from ..helpers import functions
+from ..models import ConversationalLLM
+from ..helpers.github_graphql import fetch_issues
 import os.path
 import logging
 from typing import Self
-
-_logger = logging.getLogger(__name__)
 
 PROMPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'prompts')
 
@@ -17,7 +16,7 @@ class IssueSummarizer:
     self.issues: list[dict] = None
     
   def fetch_issues(self) -> Self:
-    _logger.info(f'Fetching issues for repository {self._repo}...')
+    logging.info(f'Fetching issues for repository {self._repo}...')
     issues: list[dict] = []
     repo_owner = self._repo.split('/')[0]
     repo_name = self._repo.split('/')[1]
@@ -41,6 +40,6 @@ class IssueSummarizer:
     with open(os.path.join(PROMPTS_DIR, 'summarize.md'), 'r') as file:
       prompt = file.read()
   
-    _logger.info(f'Summarizing {len(issue_data)} issues...')
-    return helpers.apply_prompt(issue_data, model=self._model, prompt=prompt, limit=limit)
+    logging.info(f'Summarizing {len(issue_data)} issues...')
+    return functions.apply_prompt(issue_data, model=self._model, prompt=prompt, limit=limit)
     

@@ -1,7 +1,6 @@
-from .interfaces import ConversationalLLM
+from ..models.interfaces import ConversationalLLM
 import json
 import logging
-_logger = logging.getLogger(__name__)
 
 def apply_prompt(issues_json: list[dict], model:ConversationalLLM, prompt: str, limit: int) -> list[dict]:
   """
@@ -47,26 +46,26 @@ def process_data(data: list, fn: callable, limit: int, chunk_size = 5):
 
   result = []
   total = min(len(data), limit or len(data))
-  _logger.debug(f'Processing {total} elements...')
+  logging.debug(f'Processing {total} elements...')
   
   chunk_result = []
   try:
     for i in range(0, total, chunk_size):
       upper_index = min(i + chunk_size, total)
-      _logger.debug(f'Processing elements {i} to {upper_index - 1}...')
+      logging.debug(f'Processing elements {i} to {upper_index - 1}...')
       chunk = data[i: upper_index]
       chunk_result = fn(chunk)
       result.extend(chunk_result)
       
       if len(chunk_result) < chunk_size and upper_index < total:
-        _logger.warning('\033[93m'
+        logging.warning('\033[93m'
               +f'WARNING: Less elements ({len(chunk_result)}) were returned than expected ({chunk_size}). '
               + 'Try reducing chunk_size.'
               +'\033[0m')
   except Exception as e:
-    _logger.error(f'\033[91mError parsing response: {e}\033[0m\n\nResponse:\n{chunk_result}')
+    logging.error(f'\033[91mError parsing response: {e}\033[0m\n\nResponse:\n{chunk_result}')
   finally:
-    _logger.debug(f'Finished: {len(result)} elements processed.')
+    logging.debug(f'Finished: {len(result)} elements processed.')
   return result
 
 def normalize_values(data: list[dict], columns: list[str]) -> list[dict]:

@@ -1,5 +1,6 @@
-from ..models import ConversationalLLM, helpers
-from ..github_graphql import fetch_issues
+from ..helpers import functions
+from ..models import ConversationalLLM
+from ..helpers.github_graphql import fetch_issues
 from .issue_summarizer import IssueSummarizer
 from .traction_analyzer import TractionAnalyzer
 from .impact_analyzer import ImpactAnalyzer
@@ -7,8 +8,6 @@ import logging
 from typing import Self
 from pydispatch import dispatcher
 from enum import Enum, auto
-
-_logger = logging.getLogger(__name__)
 
 class IssueAnalyzer:
   
@@ -46,7 +45,7 @@ class IssueAnalyzer:
     self.issues: list[dict] = None
     
   def fetch_issues(self) -> Self:
-    _logger.info(f'Fetching issues for repository {self._repo}...')
+    logging.info(f'Fetching issues for repository {self._repo}...')
     self._emit_progress(IssueAnalyzer.Steps.FETCHING_ISSUES)
     
     issues: list[dict] = []
@@ -74,7 +73,7 @@ class IssueAnalyzer:
     """
     for issue in merged_data:
         issue['score'] = issue['impact'] * issue['traction'] / (issue['effort'] or 1)
-    merged_data = helpers.normalize_values(merged_data, ['score'])
+    merged_data = functions.normalize_values(merged_data, ['score'])
     merged_data = sorted(merged_data, key=lambda x: x['score'], reverse=True)
     return merged_data
 
@@ -106,7 +105,7 @@ class IssueAnalyzer:
       head = min(head, len(traction_data))
       traction_data = traction_data[:head]
       top_numbers = {issue['number'] for issue in traction_data}
-      _logger.info(f'Prioritizing top {head} issues based on traction...')
+      logging.info(f'Prioritizing top {head} issues based on traction...')
       
       top_issues = []
       for issue in issues:
@@ -142,12 +141,12 @@ class IssueAnalyzer:
 
       self._emit_progress(IssueAnalyzer.Steps.SCORING_STARTED)
       result = self._calculate_scores(list(merged_data.values()))
-      _logger.info(f'Prioritized {len(result)} issues.')
+      logging.info(f'Prioritized {len(result)} issues.')
     
       dispatcher.send(signal=IssueAnalyzer.Signals.TASK_COMPLETED, sender=self, data=result)
       return result
     
     except Exception as e:
-      _logger.error(f'Error analyzing issues: {e}')
+      logging.error(f'Error analyzing issues: {e}')
       dispatcher.send(signal=IssueAnalyzer.Signals.ERROR, sender=self, data=str(e))
           

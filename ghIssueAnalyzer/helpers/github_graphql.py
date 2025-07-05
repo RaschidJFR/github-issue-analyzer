@@ -1,9 +1,9 @@
 import requests
 import logging
-_logger = logging.getLogger(__name__)
 _GITHUB_API = "https://api.github.com/graphql"
 
 def fetch_issues(github_token: str, repo_owner: str, repo_name: str):
+  logging.info(f"Querying issues for {repo_owner}/{repo_name} through GraphQL API...")
   limit = 400
 
   headers = {
@@ -89,7 +89,7 @@ def fetch_issues(github_token: str, repo_owner: str, repo_name: str):
       # Add issues from current page
       current_nodes = data.get("nodes", [])
       if not current_nodes:
-          _logger.warning("No issues found in current page")
+          logging.warning("No issues found in current page")
       
       issues.extend(current_nodes)
       
@@ -100,7 +100,7 @@ def fetch_issues(github_token: str, repo_owner: str, repo_name: str):
           
       cursor = page_info.get("endCursor")
   
-  _logger.info(f"Successfully fetched {len(issues)} issues")
+  logging.info(f"Successfully fetched {len(issues)} issues")
   return _unwrap_comments(issues)
 
 def _unwrap_comments(issues: list[dict]) -> list[dict]:
@@ -123,5 +123,5 @@ def _unwrap_comments(issues: list[dict]) -> list[dict]:
       return formatted_issues
       
   except Exception as e:
-      _logger.error(f"Error: {str(e)}")
+      logging.error(f"Error: {str(e)}")
       raise

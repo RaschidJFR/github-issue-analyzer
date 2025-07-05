@@ -1,11 +1,10 @@
-from ..github_graphql import fetch_issues
-from ..models import helpers
+from ..helpers.github_graphql import fetch_issues
+from ..helpers import functions
 from dateutil import parser
 import pandas as pd
 import json
 import logging
 from typing import Self
-_logger = logging.getLogger(__name__)
 
 class TractionAnalyzer:
   def __init__(self, repo:str, token: str):
@@ -20,7 +19,7 @@ class TractionAnalyzer:
     Returns:
       list[dict]: A list of issues from the repository.
     """
-    _logger.info(f'Fetching issues for repository {self._repo}...')
+    logging.info(f'Fetching issues for repository {self._repo}...')
     
     issues: list[dict] = []
     repo_owner = self._repo.split('/')[0]
@@ -163,7 +162,7 @@ class TractionAnalyzer:
         ...
       ]
     """
-    _logger.info(f'Analyzing traction for {len(issues)} issues...')
+    logging.info(f'Analyzing traction for {len(issues)} issues...')
     
     issues = issues or self.issues
     if issues is None:
@@ -171,10 +170,10 @@ class TractionAnalyzer:
     
     comments_data = self._calc_avg_comments(issues)
     interactions_data = self._count_interactions(issues)
-    merged_data = helpers.merge(comments_data, interactions_data, 'number')
+    merged_data = functions.merge(comments_data, interactions_data, 'number')
 
     columns_to_normalize = ['avg_comments_per_week', 'commentCount', 'commenterCount', 'reactionCount']
-    normalized_data = helpers.normalize_values(merged_data, columns_to_normalize)
+    normalized_data = functions.normalize_values(merged_data, columns_to_normalize)
 
     for index, issue in enumerate(normalized_data):
       merged_data[index]['score'] = (
@@ -183,6 +182,6 @@ class TractionAnalyzer:
         + issue['reactionCount'] * .15 
         + issue['avg_comments_per_week'] * .2
       )
-    merged_data = helpers.normalize_values(merged_data, ['score'])
+    merged_data = functions.normalize_values(merged_data, ['score'])
     merged_data = sorted(merged_data, key=lambda x: x['score'], reverse=True)
     return merged_data
