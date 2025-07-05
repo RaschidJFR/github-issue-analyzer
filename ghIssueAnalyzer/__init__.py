@@ -1,2 +1,2 @@
-from ghIssueAnalyzer.agents import IssueAnalyzer
-from ghIssueAnalyzer.models import ChatGPT
+from .agents import IssueAnalyzer
+from .models import ChatGPT

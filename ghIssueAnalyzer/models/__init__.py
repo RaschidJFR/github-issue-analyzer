@@ -1,2 +1,2 @@
-from ghIssueAnalyzer.models.chat_gpt import ChatGPT
-from ghIssueAnalyzer.models.interfaces import ConversationalLLM
+from .chat_gpt import ChatGPT
+from .interfaces import ConversationalLLM
