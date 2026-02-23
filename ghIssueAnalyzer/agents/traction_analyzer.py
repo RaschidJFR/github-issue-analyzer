@@ -176,7 +176,7 @@ class TractionAnalyzer:
     normalized_data = functions.normalize_values(merged_data, columns_to_normalize)
 
     for index, issue in enumerate(normalized_data):
-      merged_data[index]['score'] = (
+      merged_data[index]['score'] = 0 if issue['avg_comments_per_week'] == 0 else (
         issue['commentCount'] * .3 
         + issue['commenterCount'] * .6 
         + issue['reactionCount'] * .15 
