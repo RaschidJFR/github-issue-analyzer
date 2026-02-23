@@ -4,10 +4,11 @@ Based on the problem being solved, the proposed approach, the conclusion, and ne
 
 **Impact Scale**
 
-4 – Required for building or running real-world apps. Without this, developers can’t build, launch, or scale production apps reliably.
-3 – Improves real-world applicability and there is no workaround or alternative.
-2 – Simplifies development and/or there are some workarounds or alternatives to overcome the issue.
-1 – Improves code maintainability without changing what’s possible. Little to no impact on app behavior or developer workflow.
+5 – Required for building or running enterprise-grade apps. No workaround or alternative available.
+4 – Improves SDAP (Security, Durability, Availability, Performance). There is no workaround or alternative.
+3 - Improves DX (Development Experience) for enterprise applications. There are no workarounds or alternatives.
+2 – Improves DX but there are workarounds or alternatives available.
+1 – Improves code maintainability without changing what’s possible. Little to no impact on product behavior or DX.
 
 
 After assigning an impact number, provide your impact analysis addressing these questions:
