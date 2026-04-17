@@ -16,12 +16,13 @@ A Python tool for analyzing and prioritizing GitHub issues based on _traction_, 
 See the provided [Jupyter notebook](./notebook.ipynb) for usage examples:
 
 ```py
-from lib.agents import IssueAnalyzer
-from lib.models import ChatGPT
+from ghIssueAnalyzer.agents import IssueAnalyzer
+from ghIssueAnalyzer.models import ChatGPT
+import pandas as pd
 
 # A simple ChatGPT wrapper interface.
 # (TO-DO: support other LLMs providers in the future)
-model = ChatGPT('YOUR_OPENAI_API_KEY', model='gpt-4o-mini')
+model = ChatGPT('YOUR_OPENAI_API_KEY', model='gpt-5-mini')
 
 agent = IssueAnalyzer(
     'parse-community/parse-server',   # GitHub repository
@@ -30,10 +31,17 @@ agent = IssueAnalyzer(
 )
 
 # Fetch open issues and analyze the top 15
-analysis = agent.fetch_issues().analyze(head=15)
+# template: 'DX' (Developer Experience) or 'SDAP' (Security, Durability, Availability, Performance)
+analysis = agent.fetch_issues().analyze(head=15, template='DX')
 
 # Export analysis to CSV using your preferred method
 pd.DataFrame(analysis).to_csv('issue_analysis.csv', index=False)
+```
+
+Alternatively, if you already have a list of issues, you can skip fetching and load them directly:
+
+```py
+analysis = agent.load_issues(my_issues).analyze(head=15)
 ```
 
 ## Output Format
@@ -49,10 +57,10 @@ pd.DataFrame(analysis).to_csv('issue_analysis.csv', index=False)
 | `title`           | str   | Issue title                                                                                                                                                                                                                                                                 |
 | `issue_type`      | str   | One of: Bug, Security, Performance, Documentation, Feature Request, Other                                                                                                                                                                                                   |
 | `summary`         | str   | Concise summary of the issue and its conclusion                                                                                                                                                                                                                             |
-| `traction`        | float | Normalized score based on comments, reactions, and engagement. Calculated using the following weights: <br>`commentCount * .3 + uniqueCommenterCount * .6 + reactionCount * .15 + avg_comments_per_week' * .2`                                                              |
+| `traction`        | float | Normalized score based on comments, reactions, and engagement. Calculated using the following weights: <br>`commentCount * .3 + commenterCount * .6 + reactionCount * .15 + avg_comments_per_week * .2`                                                              |
 | `impact`          | float | Impact score (1 to 4) from LLM analysis according to the template selected. _See [prompts](./ghIssueAnalyzer/agents/prompts/)_                                                                                                                                              |
 | `impact_analysis` | str   | Explanation of impact score assignment                                                                                                                                                                                                                                      |
-| `effort`          | float | If set in the analysis parameters, this is the effort estimation from LLM analysis; `1` otherwise. _See [prompt](./ghIssueAnalyzer/agents/prompts/summarize.md)_. <br>**Note:** This estimation can be improved with a dedicated prompt but for now it seems to be enough for a decent issue ranking |
+| `effort`          | float | Experimental. Only present when `include_effort=True` is passed to `analyze()`. Effort estimation from LLM analysis — accuracy is limited and the feature is still being refined. _See [prompt](./ghIssueAnalyzer/agents/prompts/summarize.md)_ |
 | `score`           | float | Overall priority score (normalized 0-1, higher = more important). The resulting list is sorted by this value. <br>**Formula:** `traction * impact / effort`                                                                                                                 |
 | `createdAt`       | str   | ISO timestamp when issue was created                                                                                                                                                                                                                                        |
 
@@ -85,7 +93,7 @@ In your API key settings, make sure to enable access to the GPT-4o mini model (o
 ## To Do
 
 - [ ] Validate and improve ranking algorithm
-- [ ] Provide a way to export the analysis results
+- [ ] Refine effort estimation (`include_effort`)
 - [ ] Support other LLM providers (eg: Gemini, Claude, etc)
 - [ ] Test support for private repositories
 - [ ] Integrate report with Github Discussions

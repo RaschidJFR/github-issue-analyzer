@@ -5,7 +5,7 @@ Based on the problem being solved, the proposed approach, the conclusion, and ne
 **Impact Scale**
 
 5 – Improves SDAP (Security, Durability, Availability, Performance). There is no workaround or alternative.
-3 - Improves DX (Development Experience). There are no workarounds or alternatives.
+4 - Improves DX (Development Experience). There are no workarounds or alternatives.
 3 - Improves DX. There are limited workarounds/alternatives leading to an even poorer DX.
 2 – Improves DX but there are reasonable workarounds or alternatives available.
 1 – Improves code maintainability without changing what’s possible. Little to no impact on product behavior or DX.
