@@ -30,13 +30,24 @@ class ImpactAnalyzer:
     self.issues = issues
     return self
 
-  def analyze(self, issues: list[dict] = None, limit: int = None) -> list[dict]:
+  def analyze(self, issues: list[dict] = None, limit: int = None, **kwargs) -> list[dict]:
+    """Analyze the impact of issues using a predefined prompt template.
+    Args:
+      issues (list[dict], optional): List of issues to analyze. If None, uses previously loaded issues.
+      limit (int, optional): Maximum number of issues to return. Defaults to None (no limit).
+      template ('DX' | 'SDAP', optional): Template type for impact analysis. Defaults to 'DX'.
+    Returns:
+      list[dict]: List of issues with impact analysis results.
+    """
+    template = kwargs.get('template', 'DX')
+    
     issues = issues or self.issues
     if issues is None:
       raise ValueError("You must first call `fetch_issues` or `load_issues` to load issue data.")
     
+    md_file =  kwargs.get(f'estimate_impact-{template}.md', 'estimate_impact-DX.md')
     prompt = ''
-    with open(os.path.join(PROMPTS_DIR, 'estimate_impact.md'), 'r') as file:
+    with open(os.path.join(PROMPTS_DIR, md_file), 'r') as file:
       prompt = file.read()
   
     logging.info(f'Applying impact analysis prompt to {len(issues)} issues...')

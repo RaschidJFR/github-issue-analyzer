@@ -62,17 +62,20 @@ class IssueAnalyzer:
     self.issues = issues
     return self
     
-  def _calculate_scores(self, merged_data: list[dict]) -> list[dict]:
+  def _calculate_scores(self, merged_data: list[dict], **kwargs) -> list[dict]:
     """
     Calculate scores for issues based on impact, traction, and effort.
     
     Args:
       merged_data (list[dict]): List of dictionaries containing issue data with 'impact', 'traction', and 'effort'.
+      include_effort (bool, optional): Whether to include effort in score calculation. Defaults to False.
     Returns:
       list[dict]: List of dictionaries with calculated scores for each issue.
     """
     for issue in merged_data:
-        issue['score'] = issue['impact'] * issue['traction'] / (issue['effort'] or 1)
+        issue['score'] = issue['impact'] * issue['traction']
+        if kwargs.get('include_effort', False):
+            issue['score'] = issue['score'] / (issue.get('effort', 0) or 1)
     merged_data = functions.normalize_values(merged_data, ['score'])
     merged_data = sorted(merged_data, key=lambda x: x['score'], reverse=True)
     return merged_data
@@ -85,14 +88,18 @@ class IssueAnalyzer:
       data=data
     )
 
-  def analyze(self, issues: list[dict] = None, head: int = 20) -> list[dict]:
+  def analyze(self, issues: list[dict] = None, head: int = 20, **kwargs) -> list[dict]:
     """Analyze and prioritize issues based on traction, impact, and effort.
     Args:
       issues (list[dict], optional): List of issues to analyze. If None, uses previously loaded issues.
       head (int, optional): Maximum number of issues to return. Defaults to 20.
+      include_effort (bool, optional): Whether to include effort in score calculation. Defaults to False.
+      template ('DX' | 'SDAP', optional): Template type for impact analysis. Defaults to 'DX'.
     Returns:
       list[dict]: List of prioritized issues with calculated scores.
     """
+    include_effort = kwargs.get('include_effort', False)
+    template = kwargs.get('template', 'DX')
     result = []
     try:
       issues = issues or self.issues
@@ -113,10 +120,10 @@ class IssueAnalyzer:
           top_issues.append(issue)
       
       self._emit_progress(IssueAnalyzer.Steps.ISSUE_SUMMARIZATION_STARTED)
-      summary_data = IssueSummarizer(self._repo, self._token, self._model).summarize(top_issues)
+      summary_data = IssueSummarizer(self._repo, self._token, self._model).summarize(top_issues, include_effort=include_effort)
       
       self._emit_progress(IssueAnalyzer.Steps.IMPACT_ANALYSIS_STARTED)
-      impact_data = ImpactAnalyzer(self._repo, self._token, self._model).analyze(top_issues)
+      impact_data = ImpactAnalyzer(self._repo, self._token, self._model).analyze(top_issues, template=template)
       
       merged_data = {}
       for issue in traction_data:
@@ -140,13 +147,13 @@ class IssueAnalyzer:
           })
 
       self._emit_progress(IssueAnalyzer.Steps.SCORING_STARTED)
-      result = self._calculate_scores(list(merged_data.values()))
+      result = self._calculate_scores(list(merged_data.values()), include_effort=include_effort)
       logging.info(f'Prioritized {len(result)} issues.')
     
       dispatcher.send(signal=IssueAnalyzer.Signals.TASK_COMPLETED, sender=self, data=result)
       return result
     
     except Exception as e:
-      logging.error(f'Error analyzing issues: {e}')
+      logging.exception(f'Error analyzing issues: {e}')
       dispatcher.send(signal=IssueAnalyzer.Signals.ERROR, sender=self, data=str(e))
           

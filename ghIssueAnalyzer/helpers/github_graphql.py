@@ -14,7 +14,7 @@ def fetch_issues(github_token: str, repo_owner: str, repo_name: str):
   query = """
   query($owner: String!, $repo: String!, $cursor: String) {
     repository(owner: $owner, name: $repo) {
-      issues(first: 100, after: $cursor, states: [OPEN], orderBy: {field: CREATED_AT, direction: DESC}) {
+      issues(first: 100, after: $cursor, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
         pageInfo {
           hasNextPage
           endCursor

@@ -2,7 +2,7 @@ from .interfaces import ConversationalLLM
 from openai import OpenAI
 
 class ChatGPT(ConversationalLLM):
-  def __init__(self, api_key:str, model='gpt-4o-mini') -> None:
+  def __init__(self, api_key:str, model='gpt-5-mini') -> None:
     self._client = OpenAI(api_key=api_key)
     self._model = model
 
