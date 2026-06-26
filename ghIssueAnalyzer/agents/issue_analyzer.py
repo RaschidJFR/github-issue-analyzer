@@ -151,6 +151,7 @@ class IssueAnalyzer:
             'url': issue['url'],
             'createdAt': issue['createdAt'],
             'labels': issue.get('labels', ''),
+            'linked_prs': issue.get('linked_prs', ''),
           })
 
       self._emit_progress(IssueAnalyzer.Steps.SCORING_STARTED)

@@ -14,6 +14,21 @@ _ISSUE_FIELDS = """
       name
     }
   }
+  timelineItems(first: 25, itemTypes: [CROSS_REFERENCED_EVENT]) {
+    nodes {
+      ... on CrossReferencedEvent {
+        willCloseTarget
+        source {
+          ... on PullRequest {
+            number
+            state
+            merged
+            url
+          }
+        }
+      }
+    }
+  }
   reactionGroups {
     content
     users {
@@ -146,6 +161,32 @@ def _collect_page(issues: list[dict], page: dict) -> tuple[list[dict], str | Non
   page_info = page.get("pageInfo", {})
   return issues, page_info.get("endCursor"), page_info.get("hasNextPage", False)
 
+def _format_linked_prs(timeline_nodes: list[dict]) -> str:
+  """Format cross-referenced PRs from timeline nodes into a readable string.
+  Only nodes that resolve to a PullRequest are included.
+  The status is one of: open, merged, closed.
+  PRs that will close the issue (via a fixing keyword) are marked with *.
+  """
+  parts = []
+  for node in timeline_nodes:
+      source = node.get("source", {})
+      if not source or "number" not in source:
+          continue
+      pr_number = source["number"]
+      pr_url = source["url"]
+      will_close = node.get("willCloseTarget", False)
+      if source.get("merged"):
+          status = "merged"
+      elif source.get("state") == "OPEN":
+          status = "open"
+      else:
+          status = "closed"
+      label = f"#{pr_number} ({status})"
+      if will_close:
+          label += "*"
+      parts.append(f"{pr_url} {label}")
+  return "\n".join(parts)
+
 def _unwrap_comments(issues: list[dict]) -> list[dict]:
   """Flatten nested GraphQL response structures into a clean issue format."""
   try:
@@ -158,6 +199,7 @@ def _unwrap_comments(issues: list[dict]) -> list[dict]:
           "createdAt": issue["createdAt"],
           "url": issue["url"],
           "labels": ", ".join(label["name"] for label in issue["labels"]["nodes"]),
+          "linked_prs": _format_linked_prs(issue["timelineItems"]["nodes"]),
           "reactionGroups": [{
               "content": group["content"],
               "count": group["users"]["totalCount"]
