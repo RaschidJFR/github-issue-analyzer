@@ -102,6 +102,35 @@ def fetch_issues(github_token: str, repo_owner: str, repo_name: str, filters: li
   logging.info(f"Successfully fetched {len(seen)} issues")
   return _unwrap_comments(list(seen.values()))
 
+def fetch_issues_by_numbers(github_token: str, repo_owner: str, repo_name: str, numbers: list[int]) -> list[dict]:
+  """Fetch specific issues by number from a GitHub repository.
+  Uses batched GraphQL aliases to retrieve all issues in a single request.
+  Args:
+    github_token (str): GitHub personal access token.
+    repo_owner (str): Owner of the repository.
+    repo_name (str): Name of the repository.
+    numbers (list[int]): List of issue numbers to fetch.
+  Returns:
+    list[dict]: List of matching issues.
+  """
+  headers = _build_headers(github_token)
+  aliases = "\n      ".join(
+      f"i{n}: issue(number: {n}) {{ {_ISSUE_FIELDS} }}"
+      for n in numbers
+  )
+  query = f"""
+    query($owner: String!, $repo: String!) {{
+      repository(owner: $owner, name: $repo) {{
+        {aliases}
+      }}
+    }}
+  """
+  variables = {"owner": repo_owner.strip(), "repo": repo_name.strip()}
+  data = _post(query, variables, headers)
+  issues = [v for v in data.get("repository", {}).values() if v]
+  logging.info(f"Successfully fetched {len(issues)} issues")
+  return _unwrap_comments(issues)
+
 def _fetch_all_pages(query_string: str, headers: dict) -> list[dict]:
   """Paginate through all results for a given search query string, up to the fetch limit."""
   limit = 400
@@ -185,7 +214,7 @@ def _format_linked_prs(timeline_nodes: list[dict]) -> str:
       closing_marker = "*" if will_close else ""
       
       # Format: (status) *PR title* #PR number
-      parts.append(f"({status}){closing_marker} {pr_title} #{pr_number}")
+      parts.append(f"[{status}{closing_marker}] {pr_title} #{pr_number}")
   return "\n".join(parts)
 
 def _unwrap_comments(issues: list[dict]) -> list[dict]:

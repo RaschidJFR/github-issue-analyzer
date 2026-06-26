@@ -1,6 +1,6 @@
 from ..helpers import functions
 from ..models import ConversationalLLM
-from ..helpers.github_graphql import fetch_issues
+from ..helpers.github_graphql import fetch_issues, fetch_issues_by_numbers
 from .issue_summarizer import IssueSummarizer
 from .traction_analyzer import TractionAnalyzer
 from .impact_analyzer import ImpactAnalyzer
@@ -57,13 +57,39 @@ class IssueAnalyzer:
 
     repo_owner = self._repo.split('/')[0]
     repo_name = self._repo.split('/')[1]
-    self.issues = fetch_issues(
+    fetched = fetch_issues(
       self._token,
       repo_owner=repo_owner,
       repo_name=repo_name,
       filters=filters)
+    self.issues = self._merge_issues(self.issues, fetched)
     return self
-    
+
+  def fetch_issues_by(self, issues: list) -> Self:
+    """Fetch specific issues from the repository by number or GitHub URL.
+    Args:
+      issues (list): Issue numbers (int) or GitHub issue URLs (str), e.g.:
+        [123, 456] or ['https://github.com/org/repo/issues/123']
+    Returns:
+      Self: The current instance for method chaining.
+    """
+    numbers = [
+      int(item) if isinstance(item, int)
+      else int(item.rstrip('/').split('/')[-1])
+      for item in issues
+    ]
+    repo_owner, repo_name = self._repo.split('/')
+    fetched = fetch_issues_by_numbers(self._token, repo_owner, repo_name, numbers)
+    self.issues = self._merge_issues(self.issues, fetched)
+    return self
+
+  def _merge_issues(self, existing: list[dict] | None, incoming: list[dict]) -> list[dict]:
+    """Merge two issue lists, deduplicating by issue number. Incoming takes precedence."""
+    seen = {issue['number']: issue for issue in (existing or [])}
+    for issue in incoming:
+      seen[issue['number']] = issue
+    return list(seen.values())
+
   def load_issues(self, issues: list[dict]) -> Self:
     self.issues = issues
     return self
