@@ -9,6 +9,11 @@ _ISSUE_FIELDS = """
   state
   createdAt
   url
+  labels(first: 20) {
+    nodes {
+      name
+    }
+  }
   reactionGroups {
     content
     users {
@@ -152,6 +157,7 @@ def _unwrap_comments(issues: list[dict]) -> list[dict]:
           "state": issue["state"],
           "createdAt": issue["createdAt"],
           "url": issue["url"],
+          "labels": ", ".join(label["name"] for label in issue["labels"]["nodes"]),
           "reactionGroups": [{
               "content": group["content"],
               "count": group["users"]["totalCount"]

@@ -150,6 +150,7 @@ class IssueAnalyzer:
             'title': issue['title'],
             'url': issue['url'],
             'createdAt': issue['createdAt'],
+            'labels': issue.get('labels', ''),
           })
 
       self._emit_progress(IssueAnalyzer.Steps.SCORING_STARTED)
