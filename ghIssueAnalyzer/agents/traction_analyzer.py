@@ -137,8 +137,12 @@ class TractionAnalyzer:
     stats_df['avg_comments_per_week'] = (stats_df.apply(
       lambda row: 0 if row['last_comment'] is pd.NaT or row['last_comment'] < oldest_date else row['avg_comments_per_week'], axis=1)
     )
-    str_data = stats_df.reset_index().to_json(orient='records', date_format='iso')
-    return json.loads(str_data)
+    # Truncate last_comment to date-only string
+    records = json.loads(stats_df.reset_index().to_json(orient='records', date_format='iso'))
+    for record in records:
+      if record.get('last_comment'):
+        record['last_comment'] = record['last_comment'][:10]
+    return records
 
   def analyze(self, issues: list[dict] = None) -> list[dict]:
     """ Analyze the traction of issues in the repository.

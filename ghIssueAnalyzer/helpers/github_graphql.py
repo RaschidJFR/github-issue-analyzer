@@ -21,6 +21,7 @@ _ISSUE_FIELDS = """
         source {
           ... on PullRequest {
             number
+            title
             state
             merged
             url
@@ -173,7 +174,7 @@ def _format_linked_prs(timeline_nodes: list[dict]) -> str:
       if not source or "number" not in source:
           continue
       pr_number = source["number"]
-      pr_url = source["url"]
+      pr_title = source.get("title", "")
       will_close = node.get("willCloseTarget", False)
       if source.get("merged"):
           status = "merged"
@@ -181,10 +182,10 @@ def _format_linked_prs(timeline_nodes: list[dict]) -> str:
           status = "open"
       else:
           status = "closed"
-      label = f"#{pr_number} ({status})"
-      if will_close:
-          label += "*"
-      parts.append(f"{pr_url} {label}")
+      closing_marker = "*" if will_close else ""
+      
+      # Format: (status) *PR title* #PR number
+      parts.append(f"({status}){closing_marker} {pr_title} #{pr_number}")
   return "\n".join(parts)
 
 def _unwrap_comments(issues: list[dict]) -> list[dict]:
@@ -196,7 +197,7 @@ def _unwrap_comments(issues: list[dict]) -> list[dict]:
           "title": issue["title"],
           "body": issue["body"],
           "state": issue["state"],
-          "createdAt": issue["createdAt"],
+          "createdAt": issue["createdAt"][:10], # Truncate to date-only string
           "url": issue["url"],
           "labels": ", ".join(label["name"] for label in issue["labels"]["nodes"]),
           "linked_prs": _format_linked_prs(issue["timelineItems"]["nodes"]),
