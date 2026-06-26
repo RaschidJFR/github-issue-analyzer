@@ -44,18 +44,24 @@ class IssueAnalyzer:
     self._repo = repo
     self.issues: list[dict] = None
     
-  def fetch_issues(self) -> Self:
+  def fetch_issues(self, filters: list[str] = None) -> Self:
+    """Fetch open issues from the GitHub repository.
+    Args:
+      filters (list[str], optional): Keywords to filter issues by. GitHub's search API is used
+        to retrieve only issues whose title or body contain at least one keyword. Defaults to None (no filter).
+    Returns:
+      Self: The current instance for method chaining.
+    """
     logging.info(f'Fetching issues for repository {self._repo}...')
     self._emit_progress(IssueAnalyzer.Steps.FETCHING_ISSUES)
-    
-    issues: list[dict] = []
+
     repo_owner = self._repo.split('/')[0]
     repo_name = self._repo.split('/')[1]
-    issues = fetch_issues(
-      self._token, 
-      repo_owner=repo_owner, 
-      repo_name=repo_name)
-    self.issues = issues
+    self.issues = fetch_issues(
+      self._token,
+      repo_owner=repo_owner,
+      repo_name=repo_name,
+      filters=filters)
     return self
     
   def load_issues(self, issues: list[dict]) -> Self:
