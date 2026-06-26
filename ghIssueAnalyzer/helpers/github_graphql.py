@@ -71,28 +71,35 @@ _SEARCH_QUERY = """
   }
 """
 
-def fetch_issues(github_token: str, repo_owner: str, repo_name: str, filters: list[str] = None):
+def fetch_issues(github_token: str, repo_owner: str, repo_name: str, filters: dict = None):
   """Fetch open issues from a GitHub repository using the search API, sorted by last updated descending.
   When multiple keywords are provided, a separate query is run per keyword and results are deduplicated
   by issue number. This avoids GitHub's OR operator splitting qualifiers across expressions.
+  Labels are ANDed into every query as qualifiers.
   Args:
     github_token (str): GitHub personal access token.
     repo_owner (str): Owner of the repository (user or organization).
     repo_name (str): Name of the repository.
-    filters (list[str], optional): Keywords to filter by. Only issues whose title or body
-      match at least one keyword are returned. Defaults to None (no filter).
+    filters (dict, optional): Dict with optional keys:
+      - keywords (list[str]): Only issues whose title or body match at least one keyword are returned.
+      - labels (list[str]): Only issues that have AT LEAST ONE of the specified labels are returned.
   Returns:
     list[dict]: List of open issues.
   """
   repo_owner = repo_owner.strip()
   repo_name = repo_name.strip()
   headers = _build_headers(github_token)
-  keywords = filters if filters else [None]
+
+  f = filters or {}
+  keywords = f.get('keywords') or []
+  labels = f.get('labels') or []
+  repo_qualifier = f"repo:{repo_owner}/{repo_name}"
+  label_qualifier = f"label:{','.join(labels)}" if labels else ""
 
   seen = {}
-  for keyword in keywords:
-      kw_part = f"{keyword} " if keyword else ""
-      query_string = f"repo:{repo_owner}/{repo_name} is:open {kw_part}sort:updated-desc"
+  for keyword in (keywords or [None]):
+      kw_qualifier = keyword or ""
+      query_string = f"{repo_qualifier} is:open {label_qualifier} {kw_qualifier} sort:updated-desc"
       logging.info(f"Querying issues for {repo_owner}/{repo_name} through GraphQL search API...")
       issues = _fetch_all_pages(query_string, headers)
       for issue in issues:

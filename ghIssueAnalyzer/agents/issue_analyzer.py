@@ -44,11 +44,13 @@ class IssueAnalyzer:
     self._repo = repo
     self.issues: list[dict] = None
     
-  def fetch_issues(self, filters: list[str] = None) -> Self:
+  def fetch_issues(self, filters: dict = None) -> Self:
     """Fetch open issues from the GitHub repository.
     Args:
-      filters (list[str], optional): Keywords to filter issues by. GitHub's search API is used
-        to retrieve only issues whose title or body contain at least one keyword. Defaults to None (no filter).
+      filters (dict, optional): Dict with optional keys:
+        - keywords (list[str]): Only issues matching at least one keyword are returned.
+        - labels (list[str]): Only issues having AT LEAST ONE of the specified labels are returned.
+        Defaults to None (no filter).
     Returns:
       Self: The current instance for method chaining.
     """
